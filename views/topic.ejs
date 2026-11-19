@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title><%= topic.title %></title>
+</head>
+<body>
+<p><a href="/">← トピック一覧へ</a></p>
+
+<h1><%= topic.title %></h1>
+<p>
+    作成者: <%= topic.author.name ?? topic.author.email %> /
+    <%= topic.createdAt.toLocaleString('ja-JP') %>
+</p>
+
+<h2>投稿</h2>
+<% if (posts.length === 0) { %>
+    <p>まだ投稿がありません。</p>
+<% } else { %>
+    <ul>
+        <% for (const p of posts) { %>
+            <li>
+                <strong><%= p.contributor.name ?? p.contributor.email %></strong>
+                (<%= p.createdAt.toLocaleString('ja-JP') %>)<br>
+                <%= p.message %>
+            </li>
+        <% } %>
+    </ul>
+<% } %>
+
+<form method="post" action="/topics/<%= topic.id %>/posts">
+    <p><textarea name="message" rows="3" cols="40" maxlength="512" required></textarea></p>
+    <button>投稿</button>
+</form>
+</body>
+</html>

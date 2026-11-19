@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>掲示板</title>
+</head>
+<body>
+<header>
+    <p>ようこそ、<%= user.name ?? user.email %> さん</p>
+    <form method="post" action="/logout"><button>ログアウト</button></form>
+</header>
+
+<h1>トピック一覧</h1>
+
+<form method="post" action="/topics">
+    <input name="title" placeholder="新しいトピックのタイトル" maxlength="256" required>
+    <button>作成</button>
+</form>
+
+<% if (topics.length === 0) { %>
+    <p>まだトピックがありません。</p>
+<% } else { %>
+    <ul>
+        <% for (const t of topics) { %>
+            <li>
+                <a href="/topics/<%= t.id %>"><%= t.title %></a>
+                (作成者: <%= t.author.name ?? t.author.email %> /
+                <%= t.createdAt.toLocaleString('ja-JP') %>)
+            </li>
+        <% } %>
+    </ul>
+<% } %>
+</body>
+</html>

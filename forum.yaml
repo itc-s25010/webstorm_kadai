@@ -1,0 +1,540 @@
+openapi: 3.2.1
+info:
+  title: 【期末制作課題】フォーラムシステム
+  description: スレッドフロート型掲示板
+  version: 1.0.0
+servers:
+  - url: "http://localhost:3000/api"
+tags:
+  - name: user
+    description: ユーザ関連
+  - name: topic
+    description: トピック関連
+  - name: post
+    description: メッセージ関連
+paths:
+  /user/register:
+    post:
+      summary: ユーザの新規登録
+      description: メールアドレスとパスワードは必須(8文字以上)、名前はオプションです。
+      tags:
+        - user
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+                name:
+                  type: string
+            example: {
+              "email": "taro@example.com",
+              "password": "password",
+              "name": "Taro"
+            }
+      responses:
+        "200":
+          description: 登録成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SimpleMessage"
+              example: {
+                "message": "OK"
+              }
+        "400":
+          description: 登録失敗
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SimpleMessage"
+              example: { errors: [
+                { "name": "email", "reason": "メールアドレス形式で入力してください" },
+                { "name": "password", "reason": "パスワードが短すぎます" }
+              ] }
+
+  /user/login:
+    post:
+      summary: ユーザログイン
+      description: メールアドレスとパスワードを使ってログインします。
+      tags:
+        - user
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+            example: {
+              "email": "taro@example.com",
+              "password": "password"
+            }
+      responses:
+        "200":
+          description: ログイン成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SimpleMessage"
+              example: {
+                "message": "OK"
+              }
+        "401":
+          description: ログイン失敗
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+              example: { errors: [
+                { "name": "auth", "reason": "ログインに失敗しました" }
+              ] }
+
+  /user/change:
+    put:
+      summary: ユーザの名前・パスワードの変更
+      tags:
+        - user
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                password:
+                  type: string
+                  format: password
+            examples:
+              名前のみ:
+                value: {
+                  "name": "Yamada"
+                }
+              パスワードのみ:
+                value: {
+                  "password": "new password"
+                }
+              すべて:
+                value: {
+                  "name": "Yamada",
+                  "password": "new password"
+                }
+      responses:
+        "200":
+          description: 変更成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SimpleMessage"
+              example: { "message": "Changed!" }
+        "400":
+          description: 変更失敗
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+              example: { errors: [
+                { "name": "email", "reason": "メールアドレスの書式が正しくありません" }
+              ] }
+        "401":
+          $ref: "#/components/responses/NotLogin"
+
+  /topic:
+    parameters:
+      - name: page
+        in: query
+        required: false
+        description: ページ番号
+        schema:
+          type: number
+          example: 1
+    get:
+      summary: トピック一覧
+      description: 更新日時の新しい順で1ページあたり5件のトピック情報を返します。
+      tags:
+        - topic
+      responses:
+        "200":
+          description: 正常
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  topics:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          description: トピックID
+                        title:
+                          type: string
+                          description: トピックタイトル
+                        author:
+                          type: string
+                          description: 作成者名
+                        created_at:
+                          type: string
+                          format: date-time
+                          description: 作成日
+                        updated_at:
+                          type: string
+                          format: date-time
+                          description: 更新日
+        "401":
+          $ref: "#/components/responses/NotLogin"
+
+  /topic/create:
+    post:
+      summary: 新規作成
+      description: 新しくトピックを作成します。作成時には最初の投稿メッセージも必要です。
+      tags:
+        - topic
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+                - message
+              properties:
+                title:
+                  type: string
+                  description: トピックタイトル
+                message:
+                  type: string
+                  description: 投稿メッセージ
+      responses:
+        "201":
+          description: 正常
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    description: トピックID
+                  title:
+                    type: string
+                    description: トピックタイトル
+        "400":
+          description: 失敗
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+              example: { errors: [
+                { "name": "title", "reason": "タイトルは必須項目です" }
+              ] }
+        "401":
+          $ref: "#/components/responses/NotLogin"
+
+  /topic/{topic_id}:
+    parameters:
+      - name: topic_id
+        in: path
+        description: トピックのID
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: page
+        in: query
+        description: ページ番号
+        required: false
+        schema:
+          type: number
+          example: 1
+    get:
+      summary: メッセージ一覧
+      description: 指定されたIDのトピックに投稿されたメッセージ一覧を返します。
+      tags:
+        - topic
+      responses:
+        "200":
+          description: 正常
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    description: トピックID
+                  title:
+                    type: string
+                    description: トピックタイトル
+                  last_update:
+                    type: string
+                    format: date-time
+                    description: 最終更新日時
+                  posts:
+                    type: array
+                    description: メッセージリスト
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          description: メッセージID
+                        contributor:
+                          type: object
+                          description: 投稿者の情報
+                          properties:
+                            id:
+                              type: string
+                              format: uuid
+                              description: 投稿者ID
+                            name:
+                              type: string
+                              description: 投稿者名 or 投稿者メールアドレス
+                        message:
+                          type: string
+                          description: メッセージ本文
+                        created_at:
+                          type: string
+                          format: date-time
+                          description: 投稿日時
+                        updated_at:
+                          type: string
+                          format: date-time
+                          description: 更新日時
+        "401":
+          $ref: "#/components/responses/NotLogin"
+        "404":
+          $ref: '#/components/responses/NotFoundResource'
+    post:
+      summary: メッセージ投稿
+      description: 対象のトピックにメッセージを新たに投稿します。
+      tags:
+        - topic
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - message
+              properties:
+                message:
+                  type: string
+                  description: 投稿するメッセージ本文
+      responses:
+        "200":
+          description: 正常
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SimpleMessage"
+              example: { "message": "OK" }
+        "401":
+          $ref: "#/components/responses/NotLogin"
+        "404":
+          $ref: '#/components/responses/NotFoundResource'
+    put:
+      summary: トピックタイトル変更
+      description: トピックタイトルを変更します。
+      tags:
+        - topic
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+              properties:
+                title:
+                  type: string
+                  description: 新しいトピックタイトル
+      responses:
+        "200":
+          description: 正常
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SimpleMessage"
+              example: {
+                "message": "OK"
+              }
+        "401":
+          $ref: "#/components/responses/NotLogin"
+        "403":
+          description: 作成者以外による変更など権限がなかった場合。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+              example: { "errors": [
+                { "name": "perm", "reason": "変更できませんでした" }
+              ] }
+        "404":
+          $ref: '#/components/responses/NotFoundResource'
+    delete:
+      summary: トピック削除
+      description: トピックを削除します。
+      tags:
+        - topic
+      responses:
+        "200":
+          description: 正常
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SimpleMessage"
+              example: {
+                "message": "deleted"
+              }
+        "401":
+          $ref: "#/components/responses/NotLogin"
+        "403":
+          description: 作成者以外による変更など権限がなかった場合。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+              example: { "errors": [
+                { "name": "perm", "reason": "変更できませんでした" }
+              ] }
+        "404":
+          $ref: '#/components/responses/NotFoundResource'
+
+  /post/{post_id}:
+    parameters:
+      - name: post_id
+        in: path
+        description: 投稿ID
+        required: true
+        schema:
+          type: string
+          format: uuid
+    put:
+      summary: メッセージ変更
+      description: 投稿済みのメッセージを変更します。
+      tags:
+        - post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - message
+              properties:
+                message:
+                  type: string
+                  description: 新しいメッセージ本文
+      responses:
+        "200":
+          description: 正常
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SimpleMessage"
+              example: {
+                "message": "OK"
+              }
+        "401":
+          $ref: "#/components/responses/NotLogin"
+        "403":
+          description: 作成者以外による変更など権限がなかった場合。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+              example: { "errors": [
+                { "name": "perm", "reason": "変更できませんでした" }
+              ] }
+        "404":
+          $ref: '#/components/responses/NotFoundResource'
+    delete:
+      summary: メッセージ削除
+      description: 投稿済みのメッセージを削除します。
+      tags:
+        - post
+      responses:
+        "200":
+          description: 正常
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SimpleMessage"
+              example: {
+                "message": "deleted"
+              }
+        "401":
+          $ref: "#/components/responses/NotLogin"
+        "403":
+          description: 作成者以外による変更など権限がなかった場合。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+              example: { "errors": [
+                { "name": "perm", "reason": "変更できませんでした" }
+              ] }
+        "404":
+          $ref: '#/components/responses/NotFoundResource'
+
+components:
+  responses:
+    NotLogin:
+      description: 未ログイン
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorMessage"
+          example: { errors: [ { "name": "auth", "reason": "ログインしてください" } ] }
+    NotFoundResource:
+      description: 指定されたIDに該当するデータが存在しない
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorMessage'
+          example: { "errors": [ { "name": "id", "reason": "対象のデータが存在しません" } ] }
+  schemas:
+    SimpleMessage:
+      type: object
+      properties:
+        message:
+          type: string
+    ErrorMessage:
+      type: object
+      properties:
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                description: エラー対象のパラメータ名や種類名
+              reason:
+                type: string
+                description: エラーの理由
