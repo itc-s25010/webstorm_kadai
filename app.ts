@@ -34,6 +34,7 @@ app.use(session({
   saveUninitialized: false,
 }))
 app.use(express.urlencoded({ extended: true }))
+app.use(express.static('public'))
 
 const argon2Options: argon2.HashOptions = {
   memoryCost: 19456,
@@ -44,6 +45,7 @@ const argon2Options: argon2.HashOptions = {
 // 登録画面
 app.get('/register', (req, res) => {
   res.send(`
+    <link rel="stylesheet" href="/style.css">
     <h1>新規登録</h1>
     <form method="post" action="/register">
       <p><input name="name" placeholder="表示名"></p>
@@ -81,6 +83,7 @@ app.post('/register', async (req, res) => {
 // ログイン画面
 app.get('/login', (req, res) => {
   res.send(`
+    <link rel="stylesheet" href="/style.css">
     <h1>ログイン</h1>
     <form method="post" action="/login">
       <p><input name="email" type="email" placeholder="メール" required></p>
@@ -161,7 +164,7 @@ app.get('/topics/:id', requireLogin, async (req, res) => {
     orderBy: { createdAt: 'asc' },
   })
 
-  res.render('topic', { topic, posts })
+  res.render('topic', { topic, posts, userId: req.session.userId })
 })
 
 // 投稿の作成
@@ -185,6 +188,92 @@ app.post('/topics/:id/posts', requireLogin, async (req, res) => {
     data: { topicId: id, contributorId: req.session.userId!, message },
   })
   res.redirect(`/topics/${id}`)
+})
+
+// トピック編集(作成者のみ)
+app.post('/topics/:id/edit', requireLogin, async (req, res) => {
+  const id = String(req.params.id)
+  if (!uuidPattern.test(id)) {
+    return res.status(404).send('トピックが見つかりません')
+  }
+
+  const title = String(req.body.title ?? '').trim()
+  if (!title || title.length > 256) {
+    return res.status(400).send('タイトルは1〜256文字で入力してください')
+  }
+
+  const result = await prisma.topic.updateMany({
+    where: { id, authorId: req.session.userId!, deletedAt: null },
+    data: { title },
+  })
+  if (result.count === 0) {
+    return res.status(403).send('編集できません')
+  }
+  res.redirect(`/topics/${id}`)
+})
+
+// トピック削除(作成者のみ)
+app.post('/topics/:id/delete', requireLogin, async (req, res) => {
+  const id = String(req.params.id)
+  if (!uuidPattern.test(id)) {
+    return res.status(404).send('トピックが見つかりません')
+  }
+
+  const now = new Date()
+  const result = await prisma.topic.updateMany({
+    where: { id, authorId: req.session.userId!, deletedAt: null },
+    data: { deletedAt: now },
+  })
+  if (result.count === 0) {
+    return res.status(403).send('削除できません')
+  }
+
+  await prisma.post.updateMany({
+    where: { topicId: id, deletedAt: null },
+    data: { deletedAt: now },
+  })
+  res.redirect('/')
+})
+
+// 投稿編集(投稿者のみ)
+app.post('/posts/:id/edit', requireLogin, async (req, res) => {
+  const id = String(req.params.id)
+  if (!uuidPattern.test(id)) {
+    return res.status(404).send('投稿が見つかりません')
+  }
+
+  const message = String(req.body.message ?? '').trim()
+  if (!message || message.length > 512) {
+    return res.status(400).send('メッセージは1〜512文字で入力してください')
+  }
+
+  const post = await prisma.post.findFirst({
+    where: { id, contributorId: req.session.userId!, deletedAt: null },
+  })
+  if (!post) {
+    return res.status(403).send('編集できません')
+  }
+
+  await prisma.post.update({ where: { id }, data: { message } })
+  res.redirect(`/topics/${post.topicId}`)
+})
+
+// 投稿削除(投稿者のみ)
+app.post('/posts/:id/delete', requireLogin, async (req, res) => {
+  const id = String(req.params.id)
+  if (!uuidPattern.test(id)) {
+    return res.status(404).send('投稿が見つかりません')
+  }
+
+  const post = await prisma.post.findFirst({
+    where: { id, contributorId: req.session.userId!, deletedAt: null },
+  })
+  if (!post) {
+    return res.status(403).send('削除できません')
+  }
+
+  await prisma.post.update({ where: { id }, data: { deletedAt: new Date() } })
+  res.redirect(`/topics/${post.topicId}`)
 })
 
 app.listen(3000, () => {

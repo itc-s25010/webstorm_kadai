@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title><%= topic.title %></title>
+    <link rel="stylesheet" href="/style.css">
 </head>
 <body>
 <p><a href="/">← トピック一覧へ</a></p>
@@ -11,7 +12,22 @@
 <p>
     作成者: <%= topic.author.name ?? topic.author.email %> /
     <%= topic.createdAt.toLocaleString('ja-JP') %>
+    <% if (topic.updatedAt - topic.createdAt > 1000) { %>(編集済み)<% } %>
 </p>
+
+<% if (topic.authorId === userId) { %>
+    <details>
+        <summary>タイトルを編集</summary>
+        <form method="post" action="/topics/<%= topic.id %>/edit">
+            <input name="title" value="<%= topic.title %>" maxlength="256" required>
+            <button>保存</button>
+        </form>
+    </details>
+    <form method="post" action="/topics/<%= topic.id %>/delete"
+          onsubmit="return confirm('このトピックを削除します。中の投稿も見えなくなります。よろしいですか?')">
+        <button class="danger">トピックを削除</button>
+    </form>
+<% } %>
 
 <h2>投稿</h2>
 <% if (posts.length === 0) { %>
@@ -21,15 +37,31 @@
         <% for (const p of posts) { %>
             <li>
                 <strong><%= p.contributor.name ?? p.contributor.email %></strong>
-                (<%= p.createdAt.toLocaleString('ja-JP') %>)<br>
-                <%= p.message %>
+                (<%= p.createdAt.toLocaleString('ja-JP') %><% if (p.updatedAt - p.createdAt > 1000) { %>・編集済み<% } %>)
+                <div style="white-space: pre-wrap"><%= p.message %></div>
+
+                <% if (p.contributorId === userId) { %>
+                    <div class="post-actions">
+                        <details>
+                            <summary>編集</summary>
+                            <form method="post" action="/posts/<%= p.id %>/edit">
+                                <textarea name="message" rows="3" maxlength="512" required><%= p.message %></textarea>
+                                <button class="small">保存</button>
+                            </form>
+                        </details>
+                        <form method="post" action="/posts/<%= p.id %>/delete"
+                              onsubmit="return confirm('この投稿を削除します。よろしいですか?')">
+                            <button class="small danger">削除</button>
+                        </form>
+                    </div>
+                <% } %>
             </li>
         <% } %>
     </ul>
 <% } %>
 
 <form method="post" action="/topics/<%= topic.id %>/posts">
-    <p><textarea name="message" rows="3" cols="40" maxlength="512" required></textarea></p>
+    <p><textarea name="message" rows="3" maxlength="512" required></textarea></p>
     <button>投稿</button>
 </form>
 </body>
