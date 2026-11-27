@@ -1,23 +1,8 @@
-# webstorm_kadai
+# タイトル名:簡易Web掲示板
+簡易的な掲示板サイトです。スレッドとなるトピックを作成し、そこへユーザーが書き込みをして投稿することができます。  
+このWebサイトでは機能を利用する前に、サイト上でのアカウント作成、あるいはログインが必要になります。
 
-To install dependencies:
-
-```bash
-bun install
-```
-
-To run:
-
-```bash
-bun run index.ts
-```
-
-To type check:
-
-```bash
-bun check
-```
-
-Run `bun fmt` to format the code.
-
-This project was created using `bun init` in bun v1.4.4. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.
+## 使用技術
+* 言語:TypeScript、CSS
+* フレームワーク:Express
+* その他:Prisma、PostgreSQL、EJSなど
